@@ -12,6 +12,7 @@ import hashlib
 import json
 import math
 import os
+import tempfile
 import threading
 import time
 import uuid
@@ -538,6 +539,7 @@ class WecomBotChannel(ChatChannel):
 
     def _send_image(self, img_path_or_url: str, receiver: str, is_group: bool, req_id: str = None):
         """Send image reply. Converts to JPG/PNG and compresses if >2MB."""
+        tmp_dir = tempfile.gettempdir()
         local_path = img_path_or_url
         if local_path.startswith("file://"):
             local_path = local_path[7:]
@@ -555,7 +557,7 @@ class WecomBotChannel(ChatChannel):
                     ext = ".gif"
                 else:
                     ext = ".png"
-                tmp_path = f"/tmp/wecom_img_{uuid.uuid4().hex[:8]}{ext}"
+                tmp_path = os.path.join(tmp_dir, f"wecom_img_{uuid.uuid4().hex[:8]}{ext}")
                 with open(tmp_path, "wb") as f:
                     f.write(resp.content)
                 logger.info(f"[WecomBot] Image downloaded: size={len(resp.content)}, "
@@ -627,17 +629,17 @@ class WecomBotChannel(ChatChannel):
                     return file_path
                 # Extension doesn't match — rename/copy with correct extension
                 correct_ext = ".jpg" if fmt == "JPEG" else ".png"
-                out_path = f"/tmp/wecom_fmt_{uuid.uuid4().hex[:8]}{correct_ext}"
+                out_path = os.path.join(tempfile.gettempdir(), f"wecom_fmt_{uuid.uuid4().hex[:8]}{correct_ext}")
                 img.save(out_path, fmt)
                 logger.info(f"[WecomBot] Image renamed: {file_path} -> {out_path} ({fmt})")
                 return out_path
 
             # Unsupported format (WebP, GIF, BMP, etc.) — convert to PNG
             if img.mode == "RGBA":
-                out_path = f"/tmp/wecom_fmt_{uuid.uuid4().hex[:8]}.png"
+                out_path = os.path.join(tempfile.gettempdir(), f"wecom_fmt_{uuid.uuid4().hex[:8]}.png")
                 img.save(out_path, "PNG")
             else:
-                out_path = f"/tmp/wecom_fmt_{uuid.uuid4().hex[:8]}.jpg"
+                out_path = os.path.join(tempfile.gettempdir(), f"wecom_fmt_{uuid.uuid4().hex[:8]}.jpg")
                 img.convert("RGB").save(out_path, "JPEG", quality=90)
             logger.info(f"[WecomBot] Image converted from {fmt} -> {out_path}")
             return out_path
@@ -654,7 +656,7 @@ class WecomBotChannel(ChatChannel):
             if img.mode == "RGBA":
                 img = img.convert("RGB")
 
-            out_path = f"/tmp/wecom_compressed_{uuid.uuid4().hex[:8]}.jpg"
+            out_path = os.path.join(tempfile.gettempdir(), f"wecom_compressed_{uuid.uuid4().hex[:8]}.jpg")
             quality = 85
             while quality >= 30:
                 img.save(out_path, "JPEG", quality=quality, optimize=True)
@@ -683,6 +685,7 @@ class WecomBotChannel(ChatChannel):
     def _send_file(self, file_path: str, receiver: str, is_group: bool,
                    req_id: str = None, media_type: str = "file"):
         """Send file/video reply by uploading media first."""
+        tmp_dir = tempfile.gettempdir()
         local_path = file_path
         if local_path.startswith("file://"):
             local_path = local_path[7:]
@@ -692,7 +695,7 @@ class WecomBotChannel(ChatChannel):
                 resp = requests.get(local_path, timeout=60)
                 resp.raise_for_status()
                 ext = os.path.splitext(local_path)[1] or ".bin"
-                tmp_path = f"/tmp/wecom_file_{uuid.uuid4().hex[:8]}{ext}"
+                tmp_path = os.path.join(tmp_dir, f"wecom_file_{uuid.uuid4().hex[:8]}{ext}")
                 with open(tmp_path, "wb") as f:
                     f.write(resp.content)
                 local_path = tmp_path

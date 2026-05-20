@@ -309,6 +309,28 @@ def drag_sensitive(config):
 
 def load_config():
     global config
+    # Auto-load .env file if present (like python-dotenv, no extra dependency)
+    env_path = "./.env"
+    if os.path.exists(env_path):
+        loaded = 0
+        with open(env_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, _, value = line.partition("=")
+                key = key.strip()
+                value = value.strip()
+                # Remove surrounding quotes if present
+                if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+                    value = value[1:-1]
+                if key and key not in os.environ:
+                    os.environ[key] = value
+                    loaded += 1
+        if loaded:
+            logger.info("[INIT] Loaded {} variables from .env file".format(loaded))
+    else:
+        logger.debug("[INIT] No .env file found, skipping")
 
     # 打印 ASCII Logo
     logger.info("  ____                _                    _   ")

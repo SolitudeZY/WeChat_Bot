@@ -93,13 +93,14 @@ class WecomBotMessage(ChatMessage):
         self.create_time = msg_body.get("create_time")
         self.is_group = is_group
 
+class WecomBotMessage(ChatMessage):
+        self.msg_id = msg_body.get("msgid")
+        self.create_time = msg_body.get("create_time")
+        self.is_group = is_group
+        self.is_at = is_group  # 企微群聊中只有@机器人时才会推送消息，所有群消息都是@消息
+
         msg_type = msg_body.get("msgtype")
         from_userid = msg_body.get("from", {}).get("userid", "")
-        chat_id = msg_body.get("chatid", "")
-        bot_id = msg_body.get("aibotid", "")
-
-        if msg_type == "text":
-            self.ctype = ContextType.TEXT
             content = msg_body.get("text", {}).get("content", "")
             if is_group:
                 content = re.sub(r"@\S+\s*", "", content).strip()
